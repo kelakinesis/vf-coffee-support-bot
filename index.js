@@ -15,6 +15,15 @@ const coffeeDrinks = require('./coffee.json');
 const hotCoffees = coffeeDrinks.hot;
 const icedCoffees = coffeeDrinks.iced;
 
+
+/* ----- Interact with Telegraf / Telegram ----- */
+async function sendTelegramMessage(ctx, msg) {
+    console.log(`Started sendTelegramMessage() ...`);
+    await ctx.reply(msg);
+}
+
+
+/* ----- Helper functions ----- */
 // createSessionID example source: https://replit.com/@niko-voiceflow/voiceflow-slackbot?v=1#index.js
 function createVFSessionID() {
     // Random Number Generator
@@ -64,8 +73,8 @@ async function processVFResponse(ctx, response) {
             /* Get Random Coffee use cases:
                 - Get state using /interact */
             case 'Get random coffee': {
-                let hotOrIced = await fetchState();
-                // let hotOrIced = trace.payload;
+                let hotOrIced = await fetchVFState();
+                // let hotOrIced = trace.payload;   // Quicker method to retrieve the Custom Aciton payload
                 let { title, description } = getRandomCoffee(hotOrIced);
                 await sendTelegramMessage(ctx, `${title}: ${description}`);
                 break;
@@ -79,6 +88,13 @@ async function processVFResponse(ctx, response) {
                 console.log(`Reached 'Test Custom Action'. Payload below ...`);
                 let payload = JSON.parse(trace.payload);
                 console.log(payload.test_message);
+                await updateVFVariables({
+                    test_message: "Got your message. Yup, this is a test!"
+                });
+                // TODO: move interactWithVF to updateVFVariables()
+                await interactWithVF(ctx, {
+                    "action": { "type": "success" }
+                });
                 // await sendTelegramMessage(ctx, `${payload.test_message}`);
                 break;
             }
@@ -130,6 +146,9 @@ async function processVFResponse(ctx, response) {
     // });
 }
 
+
+/* ----- Interact with Voiceflow APIs ----- */
+
 /* TODO: saveVFTranscript() when the following Custom Actions are detected
     1) Handoff to Agent
     2) End Conversation */
@@ -161,28 +180,30 @@ async function fetchVFState() {
             return response.data.variables.type;
         })
         .catch((error) => {
+            console.log(`Error encountered with VF Dialog API ...`);
             console.log(error);
         });
 }
 
-// TODO: update variable to indicate which random coffee was already sent to the user
-async function updateVFState() {
-    console.log(`Started updateVFState() ...`);
+async function updateVFVariables(data) {
+    console.log(`Started updateVFVariables() ...`);
 
     const config = {
-        method: 'put',
-        url: `https://general-runtime.voiceflow.com/state/user/${vfUserId}`,
+        method: 'patch',
+        url: `https://general-runtime.voiceflow.com/state/user/${vfUserId}/variables`,
         headers: {
             'versionID': vfVersionAlias,
             'Content-Type': 'application/json',
             'Authorization': vfApiKey
-        }
+        },
+        data: data
     };
 
     return await axios.request(config)
         .then((response) => {
             console.log(`response.status: ${response.status}`);
-            console.log(response.data)
+            console.log(`response.data ...`);
+            console.log(response.data);
         })
         .catch((error) => {
             console.log(error);
@@ -255,10 +276,8 @@ async function interactWithVF(ctx, payload) {
     }
 }
 
-async function sendTelegramMessage(ctx, msg) {
-    console.log(`Started sendTelegramMessage() ...`);
-    await ctx.reply(msg);
-}
+
+/* ----- main function ----- */
 
 function main() {
     bot.start((ctx) => {

@@ -20,6 +20,7 @@ const icedCoffees = coffeeDrinks.iced;
 
 
 /* ----- Interact with Telegraf / Telegram ----- */
+
 async function sendTelegramMessage(ctx, msg) {
     console.log(`Started sendTelegramMessage() ...`);
     await ctx.reply(msg);
@@ -27,6 +28,7 @@ async function sendTelegramMessage(ctx, msg) {
 
 
 /* ----- Helper functions ----- */
+
 // createSessionID example source: https://replit.com/@niko-voiceflow/voiceflow-slackbot?v=1#index.js
 function createVFSessionID() {
     // Random Number Generator
@@ -103,7 +105,7 @@ async function processVFResponse(ctx, response) {
                 - Save transcript using /transcripts [API endpoint TBC]
                 - Get transcript using /transcripts [API endpoint TBC]
                 - Send email using a 3rd party API
-                - Update Custom Action action path (in this case either 'success' or 'failure') */
+                - Update Custom Action action path (i.e. 'success') */
             case 'Email Handoff': {
                 console.log(`Reached 'Email Handoff' ...`);
                 // let vfTranscriptId = await saveVFTranscript(ctx);

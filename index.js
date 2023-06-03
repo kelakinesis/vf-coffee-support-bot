@@ -9,8 +9,8 @@ const vfVersionAlias = 'production'; // development or production
 const vfUserId = 'kl_telegram_test_001';
 const vfApiKey = process.env.VF_API_KEY;
 
-// TODO: Contribute and use sample-api coffee.json
-// coffee.json source: https://github.com/jermbo/SampleAPIs/blob/main/server/api/coffee.json
+/* TODO: Contribute and use sample-api coffee.json
+    coffee.json source: https://github.com/jermbo/SampleAPIs/blob/main/server/api/coffee.json */
 const coffeeDrinks = require('./coffee.json');
 const hotCoffees = coffeeDrinks.hot;
 const icedCoffees = coffeeDrinks.iced;
@@ -54,29 +54,53 @@ async function processVFResponse(ctx, response) {
     console.log(`Started processVFResponse() ...`);
 
     for (const trace of response.data) {
+        console.log(trace);
         switch (trace.type) {
             case 'text': {
-                sendTelegramMessage(ctx, trace.payload.message);
+                await sendTelegramMessage(ctx, trace.payload.message);
                 break;
             }
 
+            /* Get Random Coffee use cases:
+                - Get state using /interact */
             case 'Get random coffee': {
-                // let hotOrIced = await fetchState();
-                let hotOrIced = trace.payload;  // TODO: update to parse JSON string payload
-                let randomCoffee = getRandomCoffee(hotOrIced);
-                sendTelegramMessage(ctx, `${randomCoffee.title}: ${randomCoffee.description}`);
+                let hotOrIced = await fetchState();
+                // let hotOrIced = trace.payload;
+                let { title, description } = getRandomCoffee(hotOrIced);
+                await sendTelegramMessage(ctx, `${title}: ${description}`);
                 break;
             }
 
+            /* Test Custom Action use cases:
+                - Get the Custom Action payload using /interact
+                - Update variables using /interact
+                - Update Custom Action action path */
             case 'Test Custom Action': {
                 console.log(`Reached 'Test Custom Action'. Payload below ...`);
                 let payload = JSON.parse(trace.payload);
-                console.log(payload.greeting);
-                sendTelegramMessage(ctx, `${payload.greeting}`);
+                console.log(payload.test_message);
+                // await sendTelegramMessage(ctx, `${payload.test_message}`);
                 break;
             }
 
-            // TODO: handle other types such as ...
+            /* Email Handoff use cases:
+                - Get the Custom Action payload using /interact
+                - Save transcript using /transcripts [API endpoint TBC]
+                - Get transcript using /transcripts [API endpoint TBC]
+                - Send email using a 3rd party API
+                - Update Custom Action action path (in this case either 'success' or 'failure') */
+            case 'Email Handoff': {
+                console.log(`Reached 'Email Handoff' ...`);
+                // TODO: saveVFTranscript()
+                // TODO: getVFTranscript() and return formatted transcript to be passed to sendEmail()
+                // TODO: sendEmail()
+                await interactWithVF(ctx, {
+                    "action": { "type": "success" }
+                });
+                break;
+            }
+
+            // Other VF step/node types include:
             // case 'speak': 
             // case 'visual': 
             // case 'choice': 
@@ -84,7 +108,7 @@ async function processVFResponse(ctx, response) {
             // TODO: add call to https://api.voiceflow.com/v2/transcripts to save the transcript;
             // see the Discord bot for an example: https://replit.com/@niko-voiceflow/voiceflow-discord?v=1#utils/dialogapi.js
             case 'end': {
-                sendTelegramMessage(ctx, `Conversation has ended.`);
+                await sendTelegramMessage(ctx, `Conversation has ended.`);
                 break;
             }
             default: {
@@ -102,13 +126,13 @@ async function processVFResponse(ctx, response) {
     //     return texts;
     // }, []);
     // textMsgArray.forEach(msg => {
-    //     sendTelegramMessage(ctx, msg);
+    //     await sendTelegramMessage(ctx, msg);
     // });
 }
 
-// TODO: saveVFTranscript() when the following Custom Actions are detected
-// 1) Handoff to Agent
-// 2) End Conversation
+/* TODO: saveVFTranscript() when the following Custom Actions are detected
+    1) Handoff to Agent
+    2) End Conversation */
 async function saveVFTranscript(userId) {
     console.log(`Starting saveVFTranscript() ...`)
 }
@@ -165,6 +189,7 @@ async function updateVFState() {
         });
 }
 
+// TODO: add createVFSessionID() for save and get VF transcript use cases
 async function launchVFConvo(ctx) {
     console.log(`Started launchVFConvo() ...`);
     const config = {
@@ -187,17 +212,18 @@ async function launchVFConvo(ctx) {
         if (response.data) {
             processVFResponse(ctx, response);
         } else {
-            sendTelegramMessage(ctx, `Encountered an error with Voiceflow's Dialog API. Please try again.`);
+            await sendTelegramMessage(ctx, `Encountered an error with Voiceflow's Dialog API. Please try again.`);
         }
     } catch (error) {
         console.log(`Error encountered ...`);
         console.log(error);
-        sendTelegramMessage(ctx, `Encountered an error with Voiceflow's Dialog API. Please try again.`);
+        await sendTelegramMessage(ctx, `Encountered an error with Voiceflow's Dialog API. Please try again.`);
     }
 
 };
 
-async function interactWithVF(ctx) {
+// TODO: update to handle VF intent and launch actions
+async function interactWithVF(ctx, payload) {
     console.log(`Started interactWithVF() ...`);
     const config = {
         method: 'post',
@@ -210,7 +236,7 @@ async function interactWithVF(ctx) {
         data: {
             action: {
                 type: 'text',
-                payload: `${ctx.message.text}`
+                payload: `${payload}`
             }
         }
     };
@@ -220,12 +246,12 @@ async function interactWithVF(ctx) {
         if (response.data) {
             processVFResponse(ctx, response);
         } else {
-            sendTelegramMessage(ctx, `Encountered an error with Voiceflow's Dialog API. Please try again.`);
+            await sendTelegramMessage(ctx, `Encountered an error with Voiceflow's Dialog API. Please try again.`);
         }
     } catch (error) {
         console.log(`Error encountered ...`);
         console.log(error);
-        sendTelegramMessage(ctx, `Encountered an error with Voiceflow's Dialog API. Please try again.`);
+        await sendTelegramMessage(ctx, `Encountered an error with Voiceflow's Dialog API. Please try again.`);
     }
 }
 
@@ -239,7 +265,7 @@ function main() {
         launchVFConvo(ctx);
     });
     bot.on('text', (ctx) => {
-        interactWithVF(ctx);
+        interactWithVF(ctx, ctx.message.text);
     })
     bot.launch();
 }

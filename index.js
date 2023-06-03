@@ -61,9 +61,11 @@ function getRandomCoffee(hotOrIced) {
 
 async function processVFResponse(ctx, response) {
     console.log(`Started processVFResponse() ...`);
+    // console.log(`response.data ...`);
+    // console.log(response.data);
 
     for (const trace of response.data) {
-        console.log(trace);
+        // console.log(trace);
         switch (trace.type) {
             case 'text': {
                 await sendTelegramMessage(ctx, trace.payload.message);
@@ -86,16 +88,10 @@ async function processVFResponse(ctx, response) {
                 - Update Custom Action action path */
             case 'Test Custom Action': {
                 console.log(`Reached 'Test Custom Action'. Payload below ...`);
-                let payload = JSON.parse(trace.payload);
-                console.log(payload.test_message);
-                await updateVFVariables({
-                    test_message: "Got your message. Yup, this is a test!"
+                console.log(JSON.parse(trace.payload));
+                await updateVFVariables(ctx, {
+                    test_message: "Yup, this is a test!"
                 });
-                // TODO: move interactWithVF to updateVFVariables()
-                await interactWithVF(ctx, {
-                    "action": { "type": "success" }
-                });
-                // await sendTelegramMessage(ctx, `${payload.test_message}`);
                 break;
             }
 
@@ -134,81 +130,10 @@ async function processVFResponse(ctx, response) {
             }
         }
     }
-
-    // const textMsgArray = response.data.reduce((texts, trace) => {
-    //     if (trace.type === 'text') {
-    //         texts.push(trace.payload.message);
-    //     }
-    //     return texts;
-    // }, []);
-    // textMsgArray.forEach(msg => {
-    //     await sendTelegramMessage(ctx, msg);
-    // });
 }
 
 
 /* ----- Interact with Voiceflow APIs ----- */
-
-/* TODO: saveVFTranscript() when the following Custom Actions are detected
-    1) Handoff to Agent
-    2) End Conversation */
-async function saveVFTranscript(userId) {
-    console.log(`Starting saveVFTranscript() ...`)
-}
-
-// TODO: getVFTranscript when a 'Handff to Agent' Custom Action is detected
-async function getVFTranscript() {
-    console.log(`Starting getVFTranscript() ...`)
-}
-
-async function fetchVFState() {
-    console.log(`Started fetchVFState() ...`);
-
-    const config = {
-        method: 'get',
-        url: `https://general-runtime.voiceflow.com/state/user/${vfUserId}`,
-        headers: {
-            'versionID': vfVersionAlias,
-            'Content-Type': 'application/json',
-            'Authorization': vfApiKey
-        }
-    };
-
-    return await axios.request(config)
-        .then((response) => {
-            console.log(`response.status: ${response.status}`);
-            return response.data.variables.type;
-        })
-        .catch((error) => {
-            console.log(`Error encountered with VF Dialog API ...`);
-            console.log(error);
-        });
-}
-
-async function updateVFVariables(data) {
-    console.log(`Started updateVFVariables() ...`);
-
-    const config = {
-        method: 'patch',
-        url: `https://general-runtime.voiceflow.com/state/user/${vfUserId}/variables`,
-        headers: {
-            'versionID': vfVersionAlias,
-            'Content-Type': 'application/json',
-            'Authorization': vfApiKey
-        },
-        data: data
-    };
-
-    return await axios.request(config)
-        .then((response) => {
-            console.log(`response.status: ${response.status}`);
-            console.log(`response.data ...`);
-            console.log(response.data);
-        })
-        .catch((error) => {
-            console.log(error);
-        });
-}
 
 // TODO: add createVFSessionID() for save and get VF transcript use cases
 async function launchVFConvo(ctx) {
@@ -273,6 +198,74 @@ async function interactWithVF(ctx, payload) {
         console.log(`Error encountered ...`);
         console.log(error);
         await sendTelegramMessage(ctx, `Encountered an error with Voiceflow's Dialog API. Please try again.`);
+    }
+}
+
+/* TODO: saveVFTranscript() when the following Custom Actions are detected
+    1) Handoff to Agent
+    2) End Conversation */
+async function saveVFTranscript(userId) {
+    console.log(`Starting saveVFTranscript() ...`)
+}
+
+// TODO: getVFTranscript when a 'Handff to Agent' Custom Action is detected
+async function getVFTranscript() {
+    console.log(`Starting getVFTranscript() ...`)
+}
+
+async function fetchVFState() {
+    console.log(`Started fetchVFState() ...`);
+
+    const config = {
+        method: 'get',
+        url: `https://general-runtime.voiceflow.com/state/user/${vfUserId}`,
+        headers: {
+            'versionID': vfVersionAlias,
+            'Content-Type': 'application/json',
+            'Authorization': vfApiKey
+        }
+    };
+
+    return await axios.request(config)
+        .then((response) => {
+            console.log(`response.status: ${response.status}`);
+            return response.data.variables.type;
+        })
+        .catch((error) => {
+            console.log(`Error encountered with VF Dialog API ...`);
+            console.log(error);
+        });
+}
+
+async function updateVFVariables(ctx, data) {
+    console.log(`Started updateVFVariables() ...`);
+
+    const config = {
+        method: 'patch',
+        url: `https://general-runtime.voiceflow.com/state/user/${vfUserId}/variables`,
+        headers: {
+            'versionID': vfVersionAlias,
+            'Content-Type': 'application/json',
+            'Authorization': vfApiKey
+        },
+        data: data
+    };
+
+    try {
+        const response = await axios.request(config);
+        if (response.data) {
+            await interactWithVF(ctx, {
+                "action": { "type": "success" }
+            });
+        } else {
+            await interactWithVF(ctx, {
+                "action": { "type": "failure" }
+            });
+            console.log(`ERROR: Encountered an error with Voiceflow's Dialog API. Please try again.`);
+        }
+    } catch (error) {
+        console.log(`Error encountered ...`);
+        console.log(error);
     }
 }
 

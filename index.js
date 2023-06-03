@@ -78,19 +78,21 @@ async function processVFResponse(ctx, response) {
             }
 
             /* Get Random Coffee use cases:
-                - Get state using /interact */
-            case 'Get random coffee': {
+                - Get state
+                - Update variables and action path */
+            case 'Get Random Coffee': {
                 let hotOrIced = await fetchVFState();
                 // let hotOrIced = trace.payload;   // Quicker method to retrieve the Custom Aciton payload
                 let { title, description } = getRandomCoffee(hotOrIced);
-                await sendTelegramMessage(ctx, `${title}: ${description}`);
+                await updateVFVariables(ctx, {
+                    recommended_coffee: `${title}: ${description}`
+                });
                 break;
             }
 
             /* Test Custom Action use cases:
-                - Get the Custom Action payload using /interact
-                - Update variables using /interact
-                - Update Custom Action action path */
+                - Get the Custom Action payload
+                - Update variables and action path */
             case 'Test Custom Action': {
                 console.log(`Reached 'Test Custom Action'. Payload below ...`);
                 console.log(JSON.parse(trace.payload));
@@ -101,16 +103,18 @@ async function processVFResponse(ctx, response) {
             }
 
             /* Email Handoff use cases:
-                - Get the Custom Action payload using /interact
-                - Save transcript using /transcripts [API endpoint TBC]
-                - Get transcript using /transcripts [API endpoint TBC]
+                - Get the Custom Action payload
+                - Save transcript [API endpoint TBC]
+                - Get transcript [API endpoint TBC]
                 - Send email using a 3rd party API
                 - Update Custom Action action path (i.e. 'success') */
             case 'Email Handoff': {
                 console.log(`Reached 'Email Handoff' ...`);
+                
                 // let vfTranscriptId = await saveVFTranscript(ctx);
                 // let vfTranscript = await getVFTranscript(vfTranscriptId);
-                // TODO: build a sendEmail() function
+                // TODO: build a sendEmail() function and send action path
+
                 await interactWithVF(ctx, {
                     "action": { "type": "success" }
                 });

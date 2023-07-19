@@ -81,12 +81,13 @@ async function processVFResponse(ctx, response) {
                 - Get state
                 - Update variables and action path */
             case 'Get Random Coffee': {
-                let hotOrIced = await fetchState();
-                // let hotOrIced = trace.payload;   // Quicker method to retrieve the Custom Aciton payload
+                // let hotOrIced = await fetchState();   // Alternative method to retrieve the Custom Aciton payload
+                let hotOrIced = trace.payload;
                 let { title, description } = getRandomCoffee(hotOrIced);
-                await updateVariables(ctx, {
+                const action = await updateVariables(ctx, {
                     recommended_coffee: `${title}: ${description}`
                 });
+                await interact(ctx, action);
                 break;
             }
 
@@ -96,13 +97,14 @@ async function processVFResponse(ctx, response) {
             case 'Test Custom Action': {
                 console.log(`Reached 'Test Custom Action'. Payload below ...`);
                 console.log(JSON.parse(trace.payload));
-                await updateVariables(ctx, {
+                const action = await updateVariables(ctx, {
                     test_message: "Yup, this is a test!"
                 });
+                await interact(ctx, action);
                 break;
             }
 
-            /* Email Handoff use cases:
+            /* TODO: Add Email Handoff use case:
                 - Get the Custom Action payload
                 - Save transcript [API endpoint TBC]
                 - Get transcript [API endpoint TBC]
@@ -110,16 +112,6 @@ async function processVFResponse(ctx, response) {
                 - Update Custom Action action path (i.e. 'success') */
             case 'Email Handoff': {
                 console.log(`Reached 'Email Handoff' ...`);
-                let transcriptId = await saveTranscript();
-                console.log(`transcriptId: ${transcriptId}`);
-                let transcript = await getTranscript(transcriptId);
-                console.log(`VF Transcript ...`);
-                console.log(transcript);
-                // TODO: build a sendEmail() function and send action path
-
-                await interact(ctx, {
-                    "action": { "type": "success" }
-                });
                 break;
             }
 
@@ -130,11 +122,6 @@ async function processVFResponse(ctx, response) {
 
             // TODO: add saveTranscript()
             case 'end': {
-                let transcriptId = await saveTranscript();
-                console.log(`transcriptId: ${transcriptId}`);
-                let transcript = await getTranscript(transcriptId);
-                console.log(`VF Transcript ...`);
-                console.log(transcript);
                 await sendTelegramMessage(ctx, `Conversation has ended.`);
                 return false;
             }
@@ -181,7 +168,7 @@ async function launchConvo(ctx) {
 };
 
 // TODO: update to handle VF intent and launch actions
-async function interact(ctx, payload) {
+async function interact(ctx, action) {
     console.log(`Started interact() ...`);
     const config = {
         method: 'post',
@@ -192,10 +179,7 @@ async function interact(ctx, payload) {
             'Content-Type': 'application/json'
         },
         data: {
-            action: {
-                type: 'text',
-                payload: `${payload}`
-            }
+            action: action
         }
     };
 
@@ -214,94 +198,94 @@ async function interact(ctx, payload) {
 }
 
 /* TODO: follow-up on /transcripts documentation */
-async function saveTranscript() {
-    console.log(`Starting saveTranscript() ...`)
+// async function saveTranscript() {
+//     console.log(`Starting saveTranscript() ...`)
 
-    const config = {
-        method: 'put',
-        url: 'https://api.voiceflow.com/v2/transcripts',
-        headers: {
-            Authorization: apiKey,
-        },
-        data: {
-            browser: "Telegram",
-            device: "desktop",
-            os: "macOS",
-            sessionID: vfSessionId,
-            unread: true,
-            versionID: versionAlias,
-            projectID: projectId,
-            user: {
-                name: userId
-            }
-        }
-    }
+//     const config = {
+//         method: 'put',
+//         url: 'https://api.voiceflow.com/v2/transcripts',
+//         headers: {
+//             Authorization: apiKey,
+//         },
+//         data: {
+//             browser: "Telegram",
+//             device: "desktop",
+//             os: "macOS",
+//             sessionID: vfSessionId,
+//             unread: true,
+//             versionID: versionAlias,
+//             projectID: projectId,
+//             user: {
+//                 name: userId
+//             }
+//         }
+//     }
 
-    try {
-        const response = await axios.request(config);
-        if (response.data) {
-            console.log(`response.data ...`);
-            console.log(response.data);
-            sessionID = createSessionId();
-            return response.data._id;
-        } else {
-            console.log(`Error encountered ...`);
-        }
-    } catch (error) {
-        console.log(`Error encountered ...`);
-        console.log(error.response.data);
-    }
-}
+//     try {
+//         const response = await axios.request(config);
+//         if (response.data) {
+//             console.log(`response.data ...`);
+//             console.log(response.data);
+//             sessionID = createSessionId();
+//             return response.data._id;
+//         } else {
+//             console.log(`Error encountered ...`);
+//         }
+//     } catch (error) {
+//         console.log(`Error encountered ...`);
+//         console.log(error.response.data);
+//     }
+// }
 
 // TODO: getTranscript when a 'Handff to Agent' Custom Action is detected
-async function getTranscript(transcriptId) {
-    console.log(`Starting getTranscript() ...`);
+// async function getTranscript(transcriptId) {
+//     console.log(`Starting getTranscript() ...`);
 
-    const config = {
-        method: 'get',
-        url: `https://api.voiceflow.com/v2/transcripts/${projectId}/${transcriptId}`,
-        headers: {
-            Authorization: apiKey,
-            'Content-Type': 'application/json'
-        }
-    }
+//     const config = {
+//         method: 'get',
+//         url: `https://api.voiceflow.com/v2/transcripts/${projectId}/${transcriptId}`,
+//         headers: {
+//             Authorization: apiKey,
+//             'Content-Type': 'application/json'
+//         }
+//     }
 
-    try {
-        const response = await axios.request(config);
-        if (response.data) {
-            return response.data;
-        } else {
-            console.log(`Error encountered ...`);
-        }
-    } catch (error) {
-        console.log(`Error encountered ...`);
-        console.log(error.response.data);
-    }
-}
+//     try {
+//         const response = await axios.request(config);
+//         if (response.data) {
+//             return response.data;
+//         } else {
+//             console.log(`Error encountered ...`);
+//         }
+//     } catch (error) {
+//         console.log(`Error encountered ...`);
+//         console.log(error.response.data);
+//     }
+// }
 
-async function fetchState() {
-    console.log(`Started fetchState() ...`);
+// async function fetchState() {
+//     console.log(`Started fetchState() ...`);
 
-    const config = {
-        method: 'get',
-        url: `https://general-runtime.voiceflow.com/state/user/${userId}`,
-        headers: {
-            versionID: versionAlias,
-            Authorization: apiKey,
-            'Content-Type': 'application/json'
-        }
-    };
+//     const config = {
+//         method: 'get',
+//         url: `https://general-runtime.voiceflow.com/state/user/${userId}`,
+//         headers: {
+//             versionID: versionAlias,
+//             Authorization: apiKey,
+//             'Content-Type': 'application/json'
+//         }
+//     };
 
-    return await axios.request(config)
-        .then((response) => {
-            console.log(`response.status: ${response.status}`);
-            return response.data.variables.type;
-        })
-        .catch((error) => {
-            console.log(`Error encountered with VF Dialog API ...`);
-            console.log(error);
-        });
-}
+//     return await axios.request(config)
+//         .then((response) => {
+//             console.log(`response.status: ${response.status}`);
+//             return response.data.variables.type;
+//         })
+//         .catch((error) => {
+//             console.log(`Error encountered with VF Dialog API ...`);
+//             console.log(error);
+//         });
+// }
 
 async function updateVariables(ctx, data) {
     console.log(`Started updateVariables() ...`);
@@ -320,32 +304,94 @@ async function updateVariables(ctx, data) {
     try {
         const response = await axios.request(config);
         if (response.data) {
-            await interact(ctx, {
-                "action": { "type": "success" }
-            });
+            let action = { "type": "success" }
+            return action;
         } else {
-            await interact(ctx, {
-                "action": { "type": "failure" }
-            });
             console.log(`ERROR: Encountered an error with Voiceflow's Dialog API. Please try again.`);
+            let action = { "type": "failure" }
+            return action;
         }
     } catch (error) {
         console.log(`Error encountered ...`);
         console.log(error);
+        let action = { "type": "failure" }
+        return action;
     }
 }
 
+async function commandGetTea(ctx, msg) {
+    ctx.reply('commandGetTea started');
+    await updateVariables(ctx, {
+        test_message: msg
+    });
+    await interact(ctx, {
+        type: "intent",
+        payload: {
+            intent: {
+                name: "recommend_tea"
+            },
+            query: "",
+            entities: []
+        }
+    });
+}
+
+bot.telegram.setMyCommands([
+    {
+        command: 'iced',
+        description: 'Get a recommendation for an iced coffee',
+    },
+    {
+        command: 'hot',
+        description: 'Get a recommendation for a hot coffee',
+    },
+    {
+        command: 'tea',
+        description: 'Go to recommend_tea intent flow',
+    }
+]);
 
 /* ----- main function ----- */
 
 function main() {
     // On Telegram bot start command, launch a Voiceflow conversation
-    bot.start((ctx) => {
-        launchConvo(ctx);
-    });
-    bot.on('text', (ctx) => {
-        interact(ctx, ctx.message.text);
-    })
+    bot.start((ctx) => launchConvo(ctx));
+    // bot.command('iced', (ctx) => ctx.reply('iced-reco command fired')); 
+    bot.command('iced', (ctx) => interact(ctx, {
+        type: "intent",
+        payload: {
+            intent: {
+                name: "recommend_coffee"
+            },
+            query: "",
+            entities: [
+                {
+                    name: "temperature_type",
+                    value: "iced"
+                }
+            ]
+        }
+    }));
+    bot.command('hot', (ctx) => interact(ctx, {
+        type: "intent",
+        payload: {
+            intent: {
+                name: "recommend_coffee"
+            },
+            query: "",
+            entities: [
+                {
+                    name: "temperature_type",
+                    value: "hot"
+                }
+            ]
+        }
+    }));
+    bot.command('tea', (ctx) => commandGetTea(ctx, "sure! let's talk about tea!"));
+    bot.on('text', (ctx) => interact(ctx, {
+        type: "text",
+        payload: ctx.message.text
+    }));
     bot.launch();
 }
 
